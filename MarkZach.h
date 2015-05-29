@@ -56,6 +56,7 @@ class MZ : public TTT3D {
 		ull P = 0, E = 0; //storage for board, set to 0 initially
 		const int MAX_DEPTH = 4; //Maximum depth for search (moved from constructor so it is set compile time
 		vector<ull> history; 	//History of all moves made by players. The first value is 0 if we went first. Else it just starts.
+		const char WINS = 76;
 		ull wins[] = { //pre generated and written in literal format, so it is done during compile time instead of wasting runtime
 		        15ULL, 240ULL, 3840ULL, 61440ULL, 983040ULL, 15728640ULL, 251658240ULL, 18446744073441116160ULL, 15ULL, 240ULL, 3840ULL, 61440ULL, 983040ULL, 15728640ULL, 
 			251658240ULL, 18446744073441116160ULL, 4369ULL, 8738ULL, 17476ULL, 34952ULL, 286326784ULL, 572653568ULL, 1145307136ULL, 18446744071705198592ULL, 4369ULL, 
@@ -64,8 +65,8 @@ class MZ : public TTT3D {
 			33825ULL, 4680ULL, 18446744071631339520ULL, 306708480ULL, 33825ULL, 4680ULL, 18446744071631339520ULL, 306708480ULL, 269484289ULL, 16846864ULL, 538968578ULL, 
 			33693728ULL, 1077937156ULL, 67387456ULL, 18446744071570458632ULL, 134774912ULL, 655365ULL, 327690ULL, 10485840ULL, 5243040ULL, 167773440ULL, 83888640ULL, 
 			18446744072098959360ULL, 1342218240ULL, 18446744071564166145ULL, 272630280ULL, 67207200ULL, 34082880ULL
-		};
-		void foreign_convert(ull u, int mv[])
+		}, *winEnd = wins + 76;
+		void foreign_convert(ull u, int mv[3])
 		{
 			int pwr = 0;
 			while(u > 1)
@@ -73,14 +74,13 @@ class MZ : public TTT3D {
 				u >>= 1;
 				++pwr;
 			}
-			mv[2] = pwr/16;
-			mv[1] = (pwr - 16 * mv[2])/4;
-			mv[0] = pwr % 4;
+			mv[2] = pwr >> 4; 			// pwr/16
+			mv[1] = (pwr - (mv[2] << 4)) >> 2;  	// (pwr - 16*mv[2]) / 4
+			mv[0] = pwr & 3;			// pwr % 4
 		}
-		ull foreign_convert(int mv[])
+		ull foreign_convert(int mv[3])
 		{
-			int x = 16*mv[2] + 4*mv[1] + mv[0]; //The power exponent of the ull.
-			return ((ull)1) << x;
+			return (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] ); //The power exponent of the ull. (Originally 16*mv[2] + 4*mv[1] + mv[0])
 		}
 		bool is_valid(ull A, ull B) //Returns true if there are no intersections
 		{
@@ -88,9 +88,9 @@ class MZ : public TTT3D {
 		}
 		bool won(ull P)
 		{
-			for(int i = 0; i < wins.size(); ++i)
+			for(ull *i = wins; i < winEnd; ++i)
 			{
-				if(won(P, wins[i])) return true;
+				if(won(P, *i)) return true;
 			}
 			return false;
 		}
@@ -100,13 +100,13 @@ class MZ : public TTT3D {
 		}
 		ull atari(ull P, ull E) //Essentially, the method returns the spot where player P should play to avoid losing to E.
 		{ //Returns 0 if safe, i.e. no atari.
-			for(int i = 0; i < wins.size(); ++i)
+			for(ull *i = wins; i < winEnd; ++i)
 			{
-				ull u = E & wins[i];
-				ull u_ = u;
+				ull 	u = E & *i,
+					u_ = u;
 				while(u_ > 0)
 				{
-					if(u_ % 2)
+					if(u_ & 1)
 					{
 						if(u_ == 1)
 						{
@@ -120,20 +120,11 @@ class MZ : public TTT3D {
 			}
 			return 0; //There is no atari.
 		}
-		ull convert(int c_1, int c_2, int c_3, int c_4)
-		{
-			ull u = 0;
-			u += (1 << c_1);
-			u += (1 << c_2);
-			u += (1 << c_3);
-			u += (1 << c_4);
-			return u;
-		}
 		ull eval(ull P, ull E) //Static evaluation function
 		{
 			return rand();
 		}
-		void prune(A_B_Node *root, int i) //Cuts off all other trees after i
+		void prune(ABNode *root, int i) //Cuts off all other trees after i
 		{
 			for(int j = i + 1; j < root->children.size(); ++j)
 			{
@@ -141,7 +132,7 @@ class MZ : public TTT3D {
 			}
 			cout << "prune\n";
 		}
-		ull A_B(A_B_Node *root, int depth, ull alpha, ull beta) //To make this easier, also pass up the game states (so the AI knows which move to take next)
+		ull AB(ABNode *root, int depth, ull alpha, ull beta) //To make this easier, also pass up the game states (so the AI knows which move to take next)
 		{
 			if(depth == MAX_DEPTH || root->children.empty()) return eval(root->P, root->E);
 			if(root->type == MAX)
