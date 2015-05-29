@@ -11,6 +11,6 @@ int main() {
     players[0]->init_clock();
     players[1] = new MZ::MZ(length);
     players[1]->init_clock();
-
+	//fun
     return 0;
 }
