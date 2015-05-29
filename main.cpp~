@@ -1,0 +1,14 @@
+#include "ttt3d.h"
+#include "MarkZach.h"
+
+int main() {
+    auto length = minutes(3);
+    auto players = new TTT3D*[2];
+    
+    players[0] = new MZ::TTT3D(length);
+    players[0]->init_clock();
+    players[1] = new MZ::TTT3D(length);
+    players[1]->init_clock();
+
+    return 0;
+}
