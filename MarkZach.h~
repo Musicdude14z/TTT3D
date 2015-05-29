@@ -56,7 +56,7 @@ class MZ : public TTT3D {
 		vector<ull> history; 	//History of all moves made by players. The first value is 0 if we went first. Else it just starts.
 
 		static const char MAX_DEPTH = 4, //Maximum depth for search (moved from constructor so it is set compile time
-		      WINS = 76;
+		     		  WINS = 76;
 		static constexpr ull wins[WINS] = { //pre generated and written in literal format, so it is done during compile time instead of wasting runtime
 		        15ULL, 240ULL, 3840ULL, 61440ULL, 983040ULL, 15728640ULL, 251658240ULL, 18446744073441116160ULL, 15ULL, 240ULL, 3840ULL, 61440ULL, 983040ULL, 15728640ULL, 
 			251658240ULL, 18446744073441116160ULL, 4369ULL, 8738ULL, 17476ULL, 34952ULL, 286326784ULL, 572653568ULL, 1145307136ULL, 18446744071705198592ULL, 4369ULL, 
@@ -142,7 +142,7 @@ class MZ : public TTT3D {
 			case ABType::MAX:
 				for(int i = 0; i < root->children.size(); ++i)
 				{
-					ull alpha_ = A_B(root->children[i], depth + 1, alpha, beta);
+					ull alpha_ = AB(root->children[i], depth + 1, alpha, beta);
 					if(alpha_ > alpha)
 					{
 						alpha = alpha_;
@@ -155,7 +155,7 @@ class MZ : public TTT3D {
 			case ABType::MIN:
 				for(int i = 0; i < root->children.size(); ++i)
 				{
-					ull beta_ = A_B(root->children[i], depth + 1, alpha, beta);
+					ull beta_ = AB(root->children[i], depth + 1, alpha, beta);
 					if(beta_ < beta)
 					{
 						beta = beta_;
