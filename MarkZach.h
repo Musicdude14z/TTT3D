@@ -17,7 +17,7 @@ enum class ABType : char { //set underlying integer type to char because we only
 };
 
 struct ABNode {
-	A_B_Node(ABType type, ull P, ull E) : type(type), P(P), E(E)
+	ABNode(ABType type, ull P, ull E) : type(type), P(P), E(E)
 	{
 
 	}
@@ -33,7 +33,6 @@ struct ABNode {
 class MZ : public TTT3D {
 	public:
 		MZ(const duration<double> total_time_allowed) : TTT3D(total_time_allowed) {
-			initialize_wins(); //i will change this to be prerendered and loaded at compile time to save us runtime!!
 			history.reserve(64);
 		}
 		void next_move(int mv[3]) { //Takes an int array of size 3, and then changes the array to indicate next move
@@ -47,17 +46,18 @@ class MZ : public TTT3D {
 			ABNode *root = new ABNode(ABType::MAX, P, E);
 			int depth = MAX_DEPTH;
 			gen_tree(root, depth, ABType::MAX); //Generate the search tree rooted at root
-			ull move = A_B(root, depth);
+			ull move = AB(root, depth);
 			P += move; //Update our record of our state
 			foreign_convert(move, mv); //Store the new move.
 			history.push_back(move); //reserve (max 64 moves)
 		}
 	private:
 		ull P = 0, E = 0; //storage for board, set to 0 initially
-		const int MAX_DEPTH = 4; //Maximum depth for search (moved from constructor so it is set compile time
 		vector<ull> history; 	//History of all moves made by players. The first value is 0 if we went first. Else it just starts.
-		const char WINS = 76;
-		ull wins[] = { //pre generated and written in literal format, so it is done during compile time instead of wasting runtime
+
+		static const char MAX_DEPTH = 4, //Maximum depth for search (moved from constructor so it is set compile time
+		      WINS = 76;
+		static constexpr ull wins[WINS] = { //pre generated and written in literal format, so it is done during compile time instead of wasting runtime
 		        15ULL, 240ULL, 3840ULL, 61440ULL, 983040ULL, 15728640ULL, 251658240ULL, 18446744073441116160ULL, 15ULL, 240ULL, 3840ULL, 61440ULL, 983040ULL, 15728640ULL, 
 			251658240ULL, 18446744073441116160ULL, 4369ULL, 8738ULL, 17476ULL, 34952ULL, 286326784ULL, 572653568ULL, 1145307136ULL, 18446744071705198592ULL, 4369ULL, 
 			8738ULL, 17476ULL, 34952ULL, 286326784ULL, 572653568ULL, 1145307136ULL, 18446744071705198592ULL, 131074ULL, 262148ULL, 524296ULL, 1048592ULL, 2097184ULL, 
@@ -65,8 +65,10 @@ class MZ : public TTT3D {
 			33825ULL, 4680ULL, 18446744071631339520ULL, 306708480ULL, 33825ULL, 4680ULL, 18446744071631339520ULL, 306708480ULL, 269484289ULL, 16846864ULL, 538968578ULL, 
 			33693728ULL, 1077937156ULL, 67387456ULL, 18446744071570458632ULL, 134774912ULL, 655365ULL, 327690ULL, 10485840ULL, 5243040ULL, 167773440ULL, 83888640ULL, 
 			18446744072098959360ULL, 1342218240ULL, 18446744071564166145ULL, 272630280ULL, 67207200ULL, 34082880ULL
-		}, *winEnd = wins + 76;
-		void foreign_convert(ull u, int mv[3])
+		};
+		static constexpr ull *winEnd = const_cast<ull *>(wins) + WINS; //not sure why it's forcing me to use a const_cast..
+
+		static void foreign_convert(ull u, int mv[3])
 		{
 			int pwr = 0;
 			while(u > 1)
@@ -78,29 +80,29 @@ class MZ : public TTT3D {
 			mv[1] = (pwr - (mv[2] << 4)) >> 2;  	// (pwr - 16*mv[2]) / 4
 			mv[0] = pwr & 3;			// pwr % 4
 		}
-		ull foreign_convert(int mv[3])
+		static ull foreign_convert(int mv[3])
 		{
 			return (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] ); //The power exponent of the ull. (Originally 16*mv[2] + 4*mv[1] + mv[0])
 		}
-		bool is_valid(ull A, ull B) //Returns true if there are no intersections
+		static bool is_valid(ull A, ull B) //Returns true if there are no intersections
 		{
 			return !(A & B);
 		}
-		bool won(ull P)
+		static bool won(ull P)
 		{
-			for(ull *i = wins; i < winEnd; ++i)
+			for(const ull *i = wins; i < winEnd; ++i)
 			{
 				if(won(P, *i)) return true;
 			}
 			return false;
 		}
-		bool won(ull P, ull w)
+		static bool won(ull P, ull w)
 		{
 			return (P & w) == w;
 		}
-		ull atari(ull P, ull E) //Essentially, the method returns the spot where player P should play to avoid losing to E.
+		static ull atari(ull P, ull E) //Essentially, the method returns the spot where player P should play to avoid losing to E.
 		{ //Returns 0 if safe, i.e. no atari.
-			for(ull *i = wins; i < winEnd; ++i)
+			for(const ull *i = wins; i < winEnd; ++i)
 			{
 				ull 	u = E & *i,
 					u_ = u;
@@ -120,11 +122,11 @@ class MZ : public TTT3D {
 			}
 			return 0; //There is no atari.
 		}
-		ull eval(ull P, ull E) //Static evaluation function
+		static ull eval(ull P, ull E) //Static evaluation function
 		{
 			return rand();
 		}
-		void prune(ABNode *root, int i) //Cuts off all other trees after i
+		static void prune(ABNode *root, int i) //Cuts off all other trees after i
 		{
 			for(int j = i + 1; j < root->children.size(); ++j)
 			{
@@ -132,14 +134,15 @@ class MZ : public TTT3D {
 			}
 			cout << "prune\n";
 		}
-		ull AB(ABNode *root, int depth, ull alpha, ull beta) //To make this easier, also pass up the game states (so the AI knows which move to take next)
+		static ull AB(ABNode *root, int depth, ull alpha, ull beta) //To make this easier, also pass up the game states (so the AI knows which move to take next)
 		{
 			if(depth == MAX_DEPTH || root->children.empty()) return eval(root->P, root->E);
-			if(root->type == MAX)
-			{
+			switch(root->type) { //added a switch statement instead of two if's (better practice for enums)
+
+			case ABType::MAX:
 				for(int i = 0; i < root->children.size(); ++i)
 				{
-					ull alpha_ = A_B(root->children[i], depth + 1, alpha, beta);
+					ull alpha_ = AB(root->children[i], depth + 1, alpha, beta);
 					if(alpha_ > alpha)
 					{
 						alpha = alpha_;
@@ -148,12 +151,11 @@ class MZ : public TTT3D {
 					if(beta <= alpha) prune(root, i);
 				}
 				return alpha;
-			}
-			if(root->type == MIN)
-			{
+
+			case ABType::MIN:
 				for(int i = 0; i < root->children.size(); ++i)
 				{
-					ull beta_ = A_B(root->children[i], depth + 1, alpha, beta);
+					ull beta_ = AB(root->children[i], depth + 1, alpha, beta);
 					if(beta_ < beta)
 					{
 						beta = beta_;
@@ -164,7 +166,7 @@ class MZ : public TTT3D {
 				return beta;
 			}
 		}
-		void gen_tree(A_B_Node *root, int depth, player_type p = MAX) //Optimize this to get rid of symmetric cases
+		static void gen_tree(ABNode *root, int depth, ABType p = ABType::MAX) //Optimize this to get rid of symmetric cases
 		{
 			if(depth > 0)
 			{
@@ -172,23 +174,22 @@ class MZ : public TTT3D {
 				ull indicator = 1;
 				for(int i = 0; i < 64; ++i)
 				{
-					if(!(state % 2)) //i.e. it's empty
-					{
-						A_B_Node *n; 
-						if(p == MAX) n = new A_B_Node(MIN, root->E, (root->P | indicator));
-						else n = new A_B_Node(MAX, root->E, (root->P | indicator));
+					if(!(state & 1)) //i.e. it's empty
+					{	
+						ABType newstate = p == ABType::MAX ? ABType::MIN : ABType::MAX;
+						ABNode *n = new ABNode(newstate, root->E, (root->P | indicator));
+
 						root->children.push_back(n);
-						if(p == MAX) gen_tree(n, depth - 1, MIN);
-						else gen_tree(n, depth - 1, MAX);
+						gen_tree(n, depth - 1, newstate);
 					}
 					indicator <<= 1;
 					state >>= 1;
 				}
 			}
 		}
-		ull A_B(A_B_Node *root, int depth) //NOTE: This does not return the value, rather the next move (encoded in ull) for the AI to make.
+		static ull AB(ABNode *root, int depth) //NOTE: This does not return the value, rather the next move (encoded in ull) for the AI to make.
 		{
-			cout << "\n" << A_B(root, depth, 0, numeric_limits<ull>::max()) << "\n";
+			cout << "\n" << AB(root, depth, 0, numeric_limits<ull>::max()) << "\n";
 			return (root->P_next) - (root->P);
 		}
 };
