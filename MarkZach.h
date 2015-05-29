@@ -11,57 +11,60 @@ namespace MZ {
 using namespace std;
 
 typedef unsigned long long ull;
-	enum player_type
-	{
-		MAX, MIN //Maximizer or minimizer node
-	};
 
-	struct A_B_Node
-	{
-	vector<A_B_Node*> children;
-	ull x; //Data, i.e. value
-	ull P; //State associated with each node
-	ull E;
-	ull P_next; //Best next possible move
-	player_type type;
-	A_B_Node(player_type type_, ull P_, ull E_) : type(type_), P(P_), E(E_)
+enum class ABType : char { //set underlying integer type to char because we only have two values (char is smallest size 1 byte{
+	MAX, MIN //Maximizer or minimizer node
+};
+
+struct ABNode {
+	A_B_Node(ABType type, ull P, ull E) : type(type), P(P), E(E)
 	{
 
 	}
+
+	vector<ABNode*> children;
+	ull	x, //Data, i.e. value
+	 	P, //State associated with each node
+		E,
+		P_next; //Best next possible move
+	ABType type;
 };
 
-class MZ : public TTT3D
-{
+class MZ : public TTT3D {
 	public:
-		MZ(const duration<double> total_time_allowed) : TTT3D(total_time_allowed)
-		{
-			MAX_DEPTH = 4;
-			initialize_wins();
-			P = 0;
-			E = 0;
+		MZ(const duration<double> total_time_allowed) : TTT3D(total_time_allowed) {
+			initialize_wins(); //i will change this to be prerendered and loaded at compile time to save us runtime!!
 			history.reserve(64);
 		}
-		void next_move(int mv[3]) //Takes an int array of size 3, and then changes the array to indicate next move
-		{ //If we go first, then we will be passed an illegal move
+		void next_move(int mv[3]) { //Takes an int array of size 3, and then changes the array to indicate next move
+		 //If we go first, then we will be passed an illegal move
 			if(mv[0] >= 0 && mv[0] <= 3 && mv[1] >= 0 && mv[1] <= 3 && mv[2] >= 0 && mv[2] <= 3) 
 			{
 				history.push_back(foreign_convert(mv)); //I.e. we didn't go first
 				E += foreign_convert(mv); //Update our record of the enemy state
 			}
 			else history.push_back(0);
-			A_B_Node *root = new A_B_Node(MAX, P, E);
+			ABNode *root = new ABNode(ABType::MAX, P, E);
 			int depth = MAX_DEPTH;
-			gen_tree(root, depth, MAX); //Generate the search tree rooted at root
+			gen_tree(root, depth, ABType::MAX); //Generate the search tree rooted at root
 			ull move = A_B(root, depth);
 			P += move; //Update our record of our state
 			foreign_convert(move, mv); //Store the new move.
 			history.push_back(move); //reserve (max 64 moves)
 		}
 	private:
-		ull P;
-		ull E;
-		int MAX_DEPTH; //Maximum depth for search
-		vector<ull> history; //History of all moves made by players. The first value is 0 if we went first. Else it just starts.
+		ull P = 0, E = 0; //storage for board, set to 0 initially
+		const int MAX_DEPTH = 4; //Maximum depth for search (moved from constructor so it is set compile time
+		vector<ull> history; 	//History of all moves made by players. The first value is 0 if we went first. Else it just starts.
+		ull wins[] = { //pre generated and written in literal format, so it is done during compile time instead of wasting runtime
+		        15ULL, 240ULL, 3840ULL, 61440ULL, 983040ULL, 15728640ULL, 251658240ULL, 18446744073441116160ULL, 15ULL, 240ULL, 3840ULL, 61440ULL, 983040ULL, 15728640ULL, 
+			251658240ULL, 18446744073441116160ULL, 4369ULL, 8738ULL, 17476ULL, 34952ULL, 286326784ULL, 572653568ULL, 1145307136ULL, 18446744071705198592ULL, 4369ULL, 
+			8738ULL, 17476ULL, 34952ULL, 286326784ULL, 572653568ULL, 1145307136ULL, 18446744071705198592ULL, 131074ULL, 262148ULL, 524296ULL, 1048592ULL, 2097184ULL, 
+			4194368ULL, 8388736ULL, 16777472ULL, 33554944ULL, 67109888ULL, 134219776ULL, 268439552ULL, 536879104ULL, 1073758208ULL, 2147516416ULL, 18446744069414649856ULL, 
+			33825ULL, 4680ULL, 18446744071631339520ULL, 306708480ULL, 33825ULL, 4680ULL, 18446744071631339520ULL, 306708480ULL, 269484289ULL, 16846864ULL, 538968578ULL, 
+			33693728ULL, 1077937156ULL, 67387456ULL, 18446744071570458632ULL, 134774912ULL, 655365ULL, 327690ULL, 10485840ULL, 5243040ULL, 167773440ULL, 83888640ULL, 
+			18446744072098959360ULL, 1342218240ULL, 18446744071564166145ULL, 272630280ULL, 67207200ULL, 34082880ULL
+		};
 		void foreign_convert(ull u, int mv[])
 		{
 			int pwr = 0;
@@ -117,7 +120,6 @@ class MZ : public TTT3D
 			}
 			return 0; //There is no atari.
 		}
-		vector<ull> wins; //Vector holding each possible line
 		ull convert(int c_1, int c_2, int c_3, int c_4)
 		{
 			ull u = 0;
@@ -126,44 +128,6 @@ class MZ : public TTT3D
 			u += (1 << c_3);
 			u += (1 << c_4);
 			return u;
-		}
-		void initialize_wins() //Push the 76 winning lines the the vector called "wins"
-		{
-			//Put the stuff inside, do it for size 4.
-			for(int i = 0; i <= 60; i += 4) //16 horizontal rows
-			{
-				wins.push_back(convert(i, i + 1, i + 2, i + 3));
-			}
-			for(int i = 0; i <= 48; i += 16)
-			{
-				for(int j = i; j <= i + 3; ++j) //16 vertical rows
-				{
-					wins.push_back(convert(j, j + 4, j + 8, j + 12));
-				}
-			}
-			for(int i = 0; i <= 15; ++i) //16 out-facing rows
-			{
-				wins.push_back(convert(i, i + 16, i + 32, i + 48));
-			}
-			for(int i = 0; i <= 48; i += 16) //8 outer-face diagonals
-			{
-				wins.push_back(convert(i, i + 5, i + 10, i + 15));
-				wins.push_back(convert(i + 3, i + 6, i + 9, i + 12));
-			}
-			for(int i = 0; i <= 3; ++i) //8 horizontal-face diagonals
-			{
-				wins.push_back(convert(i, i + 20, i + 40, i + 60));
-				wins.push_back(convert(i + 12, i + 24, i + 36, i + 48));
-			}
-			for(int i = 0; i <= 12; i += 4) //8 vertical-face diagonals
-			{
-				wins.push_back(convert(i, i + 17, i + 34, i + 51));
-				wins.push_back(convert(i + 3, i + 18, i + 33, i + 48));
-			}
-			wins.push_back(convert(0, 21, 42, 63)); //The 4 space diagonals
-			wins.push_back(convert(3, 22, 41, 60));
-			wins.push_back(convert(48, 37, 26, 15));
-			wins.push_back(convert(12, 25, 38, 51));
 		}
 		ull eval(ull P, ull E) //Static evaluation function
 		{
