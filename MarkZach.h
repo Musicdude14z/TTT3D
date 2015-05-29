@@ -5,6 +5,7 @@
 
 #include "ttt3d.h"
 
+//our namespace
 namespace MZ {
 
 using namespace std;
