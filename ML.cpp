@@ -1,5 +1,7 @@
 /*
-Eventually this will be the machine learning framework
+Eventually if we have time machine learning will be used to get the coefficients for the static evaluation.
+The Christmas_Tree class helps give us the "answers" for supervised learning for our
+algorithm to try to fit the function to.
 */
 
 #include <cstdlib>
@@ -10,6 +12,8 @@ Eventually this will be the machine learning framework
 #define WINS 76
 
 typedef unsigned long long ull;
+
+const int ALLOWANCE = 2000; //Factor determining approximately how many nodes can be selected to proceed to next stage.
 
 using namespace std;
 
@@ -171,15 +175,168 @@ ull ull_comp_v(ull P) //does the above function's job but checks for E's validit
 	if(diff != 0 && diff != -1 && diff != 1) return 0;
 	return E;
 }
+
+/*
+Christmas_Tree is a class that is similar to a regular search tree, but allows to generate nodes all the way to the leaves of the graph by
+randomly selected a maximum number of nodes for which to create children (the number of allowed nodes is determined by allowance). This means that
+a search tree can be generated even from a game with only 1-move (in reasonable time). For a search tree starting at 12 moves for both players, and allowance
+equal to 2000, the total size of the search tree is still very manageable.
+
+The evaluation function built off the Christmas tree takes into account not only the number of wins, but also the average distance of each win down the tree,
+all the while weighing the calculated average win distance for each player with multiplier factors.
+
+So, for example, setting a high multiplier factor for mult[0 to 2] says that states that can win in 1 move a VERY IMPORTANT.
+
+The resulting score is the average enemy distance - the average player distance.
+
+Positive scores favor the player, while negative scores favor the enemy.
+*/
+
+class Christmas_Tree
+{
+public:
+	Christmas_Tree(ABNode *root, int allowance = ALLOWANCE) : root(root), allowance(allowance), n_nodes(1)
+	{
+		for(int i = 0; i < 64; ++i)
+		{
+			P_wins_count.push_back(0);
+			E_wins_count.push_back(0);
+			mult.push_back(1);
+		}
+		mult[2] = 2000;
+		mult[1] = 2000;
+		mult[0] = 2000;
+		vector<ABNode *> first_row;
+		first_row.push_back(root);
+		rows.push_back(first_row);
+		int i = 0;
+		while(!rows.at(i).empty())
+		{
+			gen_tree_row(rows.at(i));
+			++i;
+		}
+		int P_sum = 0; //In the end, we want wins that are in fewer moves to be more urgent (for both us and the enemy)
+		/*
+			Note that since depth is all measured from the same node, the algortihm is inherently biased towards the player (enemy is 1 move extra)
+			So if we have a state where the player has atari, and another one where the enemy has atari (remember it's our turn)
+			the player atari will be favored.
+		*/
+		for(int i = 0; i < P_wins.size(); ++i) //These two for loops calculate the weighted average distance to a win for us.
+		{
+			P_sum += mult.at(P_wins.at(i)->depth)*(P_wins.at(i)->depth);
+		}
+		double P_denom = 0;
+		for(int i = 0; i < P_wins_count.size(); ++i)
+		{
+			P_denom += mult.at(i) * P_wins_count.at(i);
+		}
+		P_wins_depth = (double)P_sum / P_denom;
+		int E_sum = 0;
+		for(int i = 0; i < E_wins.size(); ++i)  //These two for loops calculate the weighted average distance to a win for them.
+		{
+			E_sum += mult.at(E_wins.at(i)->depth)*(E_wins.at(i)->depth);
+		}
+		double E_denom = 0;
+		for(int i = 0; i < E_wins_count.size(); ++i)
+		{
+			E_denom += mult.at(i) * E_wins_count.at(i);
+		}
+		E_wins_depth = (double)E_sum / E_denom;
+		score_ = E_wins_depth - P_wins_depth;
+	}
+	ABNode *root;
+	vector< vector<ABNode *> > rows;
+	vector<ABNode *> P_wins;
+	vector<ABNode *> E_wins;
+	vector<int> P_wins_count;
+	vector<int> E_wins_count;
+	vector<double> mult; //Multiplier factors for weighting the individual components of the average distance
+	double P_wins_depth;
+	double E_wins_depth;
+	int size()
+	{
+		return n_nodes;
+	}
+	double score()
+	{
+		return score_;
+	}
+private:
+	const int allowance;
+	int n_nodes; //Number of nodes in the tree
+	void gen_tree_row(const vector<ABNode *> &prev)
+	{
+		//Select the ones that will go on to the next row and store them in vector "seed"
+		vector<ABNode *> temp(prev);
+		vector<ABNode *> seed; //Contains the ones that are selected to go on to the next generation
+		int size = temp.size();
+		vector<int> indices;
+		for(int i = 0; i < size; ++i) indices.push_back(i);
+		int added_so_far = 0;
+		while(added_so_far < allowance && !temp.empty())
+		{
+			int choice = rand() % temp.size();
+			seed.push_back(temp.at(choice));
+			temp.erase(temp.begin() + choice);
+			++added_so_far;
+		}
+		//cout << size << "\n";
+		//cout << seed.size() << "\n\n";
+		//Create the children and push them also to a new row vector
+		vector<ABNode *> next_row;
+		for(int i = 0; i < seed.size(); ++i)
+		{
+			ABNode *ptr = seed.at(i);
+			if(!won(ptr->P) && !won(ptr->E)) //If ok, then make the children
+			{
+				ull state = ptr->P | ptr->E; //Combined state
+				ull indicator = 1;
+				while(state > 0) //I.e. the spot is empty
+				{
+					if(!(state & 1))
+					{
+						ABNode *new_node = new ABNode(ptr->type == MAX ? MIN : MAX, ptr->E, (ptr->P) | indicator, (ptr->depth) + 1);
+						ptr->children.push_back(new_node);
+						++n_nodes;
+						next_row.push_back(new_node);
+					}
+					indicator <<= 1;
+					state >>= 1;
+				}
+			}
+			if(won(ptr->E))
+			{
+				if(ptr->type == MIN) 
+				{
+					P_wins.push_back(ptr);
+					++(P_wins_count.at(ptr->depth));
+				}
+				else
+				{
+					E_wins.push_back(ptr);
+					++(E_wins_count.at(ptr->depth));
+				}
+			}
+		}
+		rows.push_back(next_row);
+	}
+	double score_;
+};
+
+double eval(ull P, ull E)
+{
+	ABNode *root = new ABNode(MAX, P, E);
+	Christmas_Tree ct(root);
+	return ct.score();
+}
 		
 int main()
 {
 	srand(time(NULL));
-	total_push = 0;
-	ull P = ull_rand_v(16);
+	//ull P = ull_rand_v(12);
+	ull P = 7;
 	ull E = ull_comp_v(P);
-	ABNode *root = new ABNode(MAX, P, E);
-	gen_tree(root, 4);
-	cout << total_push;
+	cout << P << " " << E << "\n";
+	cout << eval(P, E) << "\n";
 	return 0;
 }
