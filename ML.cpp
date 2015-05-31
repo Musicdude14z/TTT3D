@@ -13,13 +13,13 @@ algorithm to try to fit the function to.
 
 typedef unsigned long long ull;
 
-const int ALLOWANCE = 2000; //Factor determining approximately how many nodes can be selected to proceed to next stage.
+const int ALLOWANCE = 3000; //Factor determining approximately how many nodes can be selected to proceed to next stage.
 
 using namespace std;
 
 ull total_push;
 
-ofstream out("search_tree_bounds.txt"); //Prob don't need this right now
+ofstream out("training_set_1.txt"); //Prob don't need this right now
 
 enum ABType{ //set underlying integer type to char because we only have two values (char is smallest size 1 byte{
 	MAX, MIN //Maximizer or minimizer node
@@ -57,20 +57,18 @@ ull atari(ull P, ull E) //Essentially, the method returns the spot where player 
 { //Returns 0 if safe, i.e. no atari.
 	for(const ull *i = wins; i < winEnd; ++i)
 	{
-		ull 	u = E & *i,
+		ull u = E & *i,
 			u_ = u;
+		int counter = 0;
 		while(u_ > 0)
 		{
-			if(u_ & 1)
-			{
-				if(u_ == 1)
-				{
-					if(P & u) break; //True if the spot is blocked
-					else return u; //I.e. the spot is open, so you have to play there.
-				}
-				else break; //For example, something like u = 10001000.
-			}
-			else(u_ >>= 1);
+			if(u_ & 1) ++counter;
+			u_ >>= 1;
+		}
+		if(counter == 3)
+		{
+			ull leftover = *i - u;
+			if(!(P & leftover)) return leftover;
 		}
 	}
 	return 0; //There is no atari.
@@ -197,52 +195,36 @@ class Christmas_Tree
 public:
 	Christmas_Tree(ABNode *root, int allowance = ALLOWANCE) : root(root), allowance(allowance), n_nodes(1)
 	{
+		E_potential = 0;
+		P_potential = 0;
 		for(int i = 0; i < 64; ++i)
 		{
 			P_wins_count.push_back(0);
 			E_wins_count.push_back(0);
 			mult.push_back(1);
 		}
-		mult[2] = 2000;
-		mult[1] = 2000;
-		mult[0] = 2000;
 		vector<ABNode *> first_row;
 		first_row.push_back(root);
 		rows.push_back(first_row);
 		int i = 0;
-		while(!rows.at(i).empty())
+		while(!rows.at(i).empty() && i < 6) //Don't want to go too far, since it won't have too big of an effect
 		{
 			gen_tree_row(rows.at(i));
 			++i;
 		}
-		int P_sum = 0; //In the end, we want wins that are in fewer moves to be more urgent (for both us and the enemy)
+		//In the end, we want wins that are in fewer moves to be more urgent (for both us and the enemy)
 		/*
 			Note that since depth is all measured from the same node, the algortihm is inherently biased towards the player (enemy is 1 move extra)
 			So if we have a state where the player has atari, and another one where the enemy has atari (remember it's our turn)
 			the player atari will be favored.
 		*/
-		for(int i = 0; i < P_wins.size(); ++i) //These two for loops calculate the weighted average distance to a win for us.
-		{
-			P_sum += mult.at(P_wins.at(i)->depth)*(P_wins.at(i)->depth);
-		}
-		double P_denom = 0;
-		for(int i = 0; i < P_wins_count.size(); ++i)
-		{
-			P_denom += mult.at(i) * P_wins_count.at(i);
-		}
-		P_wins_depth = (double)P_sum / P_denom;
-		int E_sum = 0;
-		for(int i = 0; i < E_wins.size(); ++i)  //These two for loops calculate the weighted average distance to a win for them.
-		{
-			E_sum += mult.at(E_wins.at(i)->depth)*(E_wins.at(i)->depth);
-		}
-		double E_denom = 0;
-		for(int i = 0; i < E_wins_count.size(); ++i)
-		{
-			E_denom += mult.at(i) * E_wins_count.at(i);
-		}
-		E_wins_depth = (double)E_sum / E_denom;
-		score_ = E_wins_depth - P_wins_depth;
+		E_potential += (double)100000*E_wins_count.at(1)/rows.at(1).size();
+		E_potential += (double)1000*E_wins_count.at(3)/rows.at(3).size();
+		E_potential += (double)10*E_wins_count.at(5)/rows.at(5).size();
+		P_potential += (double)10000*P_wins_count.at(2)/rows.at(2).size();
+		P_potential += (double)100*P_wins_count.at(4)/rows.at(4).size();
+		P_potential += (double)P_wins_count.at(6)/rows.at(6).size();
+		cout << P_potential << " " << E_potential << "\n";
 	}
 	ABNode *root;
 	vector< vector<ABNode *> > rows;
@@ -251,8 +233,8 @@ public:
 	vector<int> P_wins_count;
 	vector<int> E_wins_count;
 	vector<double> mult; //Multiplier factors for weighting the individual components of the average distance
-	double P_wins_depth;
-	double E_wins_depth;
+	double P_potential;
+	double E_potential;
 	int size()
 	{
 		return n_nodes;
@@ -291,7 +273,7 @@ private:
 			{
 				ull state = ptr->P | ptr->E; //Combined state
 				ull indicator = 1;
-				while(state > 0) //I.e. the spot is empty
+				for(int i = 0; i < 64; ++i)
 				{
 					if(!(state & 1))
 					{
@@ -308,13 +290,15 @@ private:
 			{
 				if(ptr->type == MIN) 
 				{
-					P_wins.push_back(ptr);
-					++(P_wins_count.at(ptr->depth));
+					E_wins.push_back(ptr);
+					++(E_wins_count.at(ptr->depth));
+					//if(ptr->depth % 2) cout << "HO";
 				}
 				else
 				{
-					E_wins.push_back(ptr);
-					++(E_wins_count.at(ptr->depth));
+					P_wins.push_back(ptr);
+					++(P_wins_count.at(ptr->depth));
+					//if(ptr->depth % 2) cout << "HEY";
 				}
 			}
 		}
@@ -323,20 +307,129 @@ private:
 	double score_;
 };
 
-double eval(ull P, ull E)
+double primitive_eval(ull P, ull E) //Not a true eval function since it still generates a search tree
 {
 	ABNode *root = new ABNode(MAX, P, E);
 	Christmas_Tree ct(root);
+	cout << atari(P, E) << "\n";
 	return ct.score();
 }
-		
+
+/*
+The following few functions will be used to determine the parameters to feed into the machine learning design matrix.
+
+Essentially they just measure certain properties about an arbitrary state.
+*/
+
+int atari(ull state) //returns the number of atari's in a given board state
+{
+	int count = 0;
+	for(const ull *i = wins; i < winEnd; ++i)
+	{
+		if(ull_sum(state & *i) >= 3) ++count;
+	}
+	return count;
+}
+
+int center(ull state) //returns the number of cubes occupied in the center 8
+{
+	ull c = 0;
+	c += 1ULL << 21; c += 1ULL << 22; c += 1ULL << 25; c += 1ULL << 26;
+	c += 1ULL << 37; c += 1ULL << 38; c += 1ULL << 41; c += 1ULL << 42;
+	return ull_sum(state & c);
+}
+
+int corner(ull state) //returns the number of corners occupied
+{
+	ull c = 0;
+	c += 1ULL << 0; c += 1ULL << 3; c += 1ULL << 12; c += 1ULL << 15;
+	c += 1ULL << 48; c += 1ULL << 51; c += 1ULL << 60; c += 1ULL << 63;
+	return ull_sum(state & c);
+}
+
+int moves(ull state) //Only include this once
+{
+	return ull_sum(state);
+}
+
+int two(ull state) //returns the number of rows with 2 occupied positions
+{
+	int count = 0;
+	for(const ull *i = wins; i < winEnd; ++i)
+	{
+		if(ull_sum(state & *i) == 2) ++count;
+	}
+	return count;	
+}
+
+int free(ull P, ull E) //returns the number of rows that are completely empty
+{
+	int count = 0;
+	ull state = P | E;
+	for(const ull *i = wins; i < winEnd; ++i)
+	{
+		if(!(state & *i)) ++count;
+	}
+	return count;
+}
+
+void draw(ull P, ull E) //You can call this function to output a board state to stdout
+{
+	vector<char> board;
+	board.reserve(64);
+	while(board.size() < 64)
+	{
+		if((P & 1) && (E & 1)) board.push_back('*');
+		else if(P & 1) board.push_back('X');
+		else if(E & 1) board.push_back('O');
+		else board.push_back('_');
+		P >>= 1;
+		E >>= 1;
+	}
+	for(int i = 0; i < 16; i += 4) //Just prints it in the right order
+	{
+		for(int j = 0; j < 64; j += 16)
+		{
+			for(int k = 0; k < 4; ++k)
+			{
+				cout << board.at(i + j + k) << " ";
+			}
+			cout << "      ";
+		}
+		cout << "\n";
+	}
+}
+
+void add_line(ull P, ull E) //adds a new entry to the training set file, which will be fed into Octave
+{
+	out << atari(P) << " " << atari(E) << " " << center(P) << " " << center(E) << " " << corner(P) << " " << corner(E) << " ";
+	out << two(P) << " " << two(E) << " " << moves(P) << " " << free(P, E) << " " << primitive_eval(P, E) << "\n";
+}
+
+void gen_file(int n) //n is the number of examples you want to put into the file
+{
+	const int LB = 8;
+	const int UB = 24;
+	for(int i = 0; i < n; ++i)
+	{
+		int r = rand() % (UB - LB + 1);
+		int size = r + LB;
+		ull P = ull_rand_v(size);
+		ull E = ull_comp_v(P);
+		add_line(P, E);
+		cout << "Added " << i << "\n";
+	}
+}
+
 int main()
 {
 	srand(time(NULL));
-	//ull P = ull_rand_v(12);
-	ull P = 7;
+	ull P = ull_rand_v(7);
+	//ull P = 7 + 64 + 2048;
 	ull E = ull_comp_v(P);
+	draw(P, E);
 	cout << P << " " << E << "\n";
-	cout << eval(P, E) << "\n";
+	cout << primitive_eval(P, E) << "\n";
+	//gen_file(100);
 	return 0;
 }
