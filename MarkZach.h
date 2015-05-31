@@ -194,6 +194,150 @@ class MZ : public TTT3D {
 			cout << "\n" << AB(root, depth, 0, numeric_limits<ull>::max()) << "\n";
 			return (root->P_next) - (root->P);
 		}
+		
+		public:
+		/*
+			Below I've added a couple of utility functions that you may find useful, some of which I'll use for my static evaluation idea.
+		*/
+		//These functions work with properties of the ull's themselves:
+		static ull ull_rand(int n, ull mask = 0) //Returns random ull u with n of its bits equal to 1 and such that u & mask == 0
+		{
+			ull u = 0;
+			vector<int> indices;
+			indices.reserve(64);
+			int pwr_counter = 0;
+			while(pwr_counter < 64)
+			{
+				if(!(mask & 1)) indices.push_back(pwr_counter);
+				++pwr_counter;
+				mask >>= 1;
+			}
+			int counter = 0;
+			while(counter < n && !indices.empty())
+			{
+				int chosen = rand() % indices.size();
+				u += (1ULL << indices[chosen]);
+				indices.erase(indices.begin() + chosen);
+				++counter;
+			}
+			return u;
+		}
+		
+		static ull ull_rand_v(int n, ull mask = 0) //Runs the above function until it returns a valid position (i.e. not won)
+		{
+			ull P = ull_rand(n, mask);
+			while(won(P)) P = ull_rand(n, mask);
+			return P;	
+		}
+		
+		static int ull_sum(ull u) //Returns digital sum of ull in binary
+		{
+			int counter = 0;
+			while(u > 0)
+			{
+				if(u & 1) ++counter;
+				u >>= 1;
+			}
+			return counter;
+		}
+		
+		static ull ull_comp(ull P) //returns a complement ull E for a given P such that (P, E) is a valid state
+		{
+			int P_sum = ull_sum(P);
+			ull E = ull_rand(P_sum, P);
+			int diff = ull_sum(P) - ull_sum(E);
+			if(diff != 0 && diff != -1 && diff != 1) return 0;
+			return E;
+		}
+		
+		static ull ull_comp_v(ull P) //does the above function's job but checks for E's validity
+		{
+			int P_sum = ull_sum(P);
+			ull E = ull_rand_v(P_sum, P);
+			int diff = ull_sum(P) - ull_sum(E);
+			if(diff != 0 && diff != -1 && diff != 1) return 0;
+			return E;
+		}
+		
+		//And these functions calculate things about game states:
+		static int atari(ull state) //returns the number of atari's in a given board state
+		{
+			int count = 0;
+			for(const ull *i = wins; i < winEnd; ++i)
+			{
+				if(ull_sum(state & *i) >= 3) ++count;
+			}
+			return count;
+		}
+		
+		static int center(ull state) //returns the number of cubes occupied in the center 8
+		{
+			ull c = 0;
+			c += 1ULL << 21; c += 1ULL << 22; c += 1ULL << 25; c += 1ULL << 26;
+			c += 1ULL << 37; c += 1ULL << 38; c += 1ULL << 41; c += 1ULL << 42;
+			return ull_sum(state & c);
+		}
+		
+		static int corner(ull state) //returns the number of corners occupied
+		{
+			ull c = 0;
+			c += 1ULL << 0; c += 1ULL << 3; c += 1ULL << 12; c += 1ULL << 15;
+			c += 1ULL << 48; c += 1ULL << 51; c += 1ULL << 60; c += 1ULL << 63;
+			return ull_sum(state & c);
+		}
+		
+		static int moves(ull state) //returns number of moves so far (+- 1)
+		{
+			return ull_sum(state);
+		}
+		
+		static int two(ull state) //returns the number of rows with 2 occupied positions
+		{
+			int count = 0;
+			for(const ull *i = wins; i < winEnd; ++i)
+			{
+				if(ull_sum(state & *i) == 2) ++count;
+			}
+			return count;	
+		}
+		
+		static int free(ull P, ull E) //returns the number of rows that are completely empty
+		{
+			int count = 0;
+			ull state = P | E;
+			for(const ull *i = wins; i < winEnd; ++i)
+			{
+				if(!(state & *i)) ++count;
+			}
+			return count;
+		}
+		
+		static void draw(ull P, ull E) //You can call this function to write a board state to stdout
+		{
+			vector<char> board;
+			board.reserve(64);
+			while(board.size() < 64)
+			{
+				if((P & 1) && (E & 1)) board.push_back('*');
+				else if(P & 1) board.push_back('X');
+				else if(E & 1) board.push_back('O');
+				else board.push_back('_');
+				P >>= 1;
+				E >>= 1;
+			}
+			for(int i = 0; i < 16; i += 4) //Just prints it in the right order
+			{
+				for(int j = 0; j < 64; j += 16)
+				{
+					for(int k = 0; k < 4; ++k)
+					{
+						cout << board.at(i + j + k) << " ";
+					}
+					cout << "      ";
+				}
+				cout << "\n";
+			}
+		}
 };
 
 }
