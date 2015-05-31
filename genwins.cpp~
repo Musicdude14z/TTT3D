@@ -22,7 +22,7 @@ int main() {
 	wins.reserve(76);
 	
 	ull winxyz = 0, winxyZ = 0, winxYz = 0, winxYZ = 0;
-	for(int z = 0, z < 4; ++z) {
+	for(int z = 0; z < 4; ++z) {
 		ull winxy = 0, winxY = 0, winyz = 0, winyZ = 0, winzx = 0, winzX = 0;
 
 		for(int y = 0; y < 4; ++y) {

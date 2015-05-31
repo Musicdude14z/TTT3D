@@ -41,13 +41,13 @@ int main() {
 			//Face Diagonal Stuff
 			//z is slicing plane, y cross +/- y is the diagonal in plane
 			winxy |= get_const(y, y, z);
-			winxY |= get_const(y, 4-y, z);
+			winxY |= get_const(y, 3-y, z);
 			
 			winyz |= get_const(z, y, y);
-			winyZ |= get_const(z, y, 4-y);
+			winyZ |= get_const(z, y, 3-y);
 			
 			winzx |= get_const(y, z, y);
-			winzX |= get_const(y, z, 4-y);
+			winzX |= get_const(y, z, 3-y);
 		}
 		wins.push_back(winxy);
 		wins.push_back(winxY);
@@ -58,9 +58,9 @@ int main() {
 
 		//Spatial Daigonal Stuff
 		winxyz |= get_const(z, z, z);
-		winxyZ |= get_const(z, z, 4-z);
-		winxYz |= get_const(z, 4-z, z);
-		winxYZ |= get_const(z, 4-z, 4-z);
+		winxyZ |= get_const(z, z, 3-z);
+		winxYz |= get_const(z, 3-z, z);
+		winxYZ |= get_const(z, 3-z, 3-z);
 	}
 	wins.push_back(winxyz);
 	wins.push_back(winxyZ);
