@@ -59,6 +59,7 @@ struct box {
                 loss = b.loss; //probably not needed
                 pos = b.pos;
                 score = b.score;
+                return *this;
         }
 
         void reset(unsigned char pos) {
