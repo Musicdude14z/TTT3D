@@ -269,7 +269,26 @@ void print_scores() {
 }
 
 int main() {
-	ull P = (1ULL) << 21, E = 0;
+	goto game;
+
+	ull p = 0, e = 0;
+	int i;
+	while(true) {
+		eval(p, e);
+		print_board(p, e, 10);
+
+		cin >> i;
+		p |= (1ULL) << i;
+		
+		eval(e, p);
+		print_board(p, e, 10);
+		cin >> i;
+		e |= (1ULL) << i;
+	}
+	return 0;
+
+game:
+	ull P = (1ULL) << 1, E = 0;
 	print_board(P, E);
 
 	eval(E, P);
