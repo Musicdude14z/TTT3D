@@ -89,7 +89,7 @@ class MZ : public TTT3D {
 	public:
 		ull get_P(){ return P; }
 		ull get_E(){ return E; }
-		MZ(const duration<double> total_time_allowed, int gamemode = 1) : TTT3D(total_time_allowed), gamemode(gamemode) {
+		MZ(const duration<double> total_time_allowed, int gamemode = 4) : TTT3D(total_time_allowed), gamemode(gamemode) { //Default to dynamic randomized minimax
 			history.reserve(64);
 			current_line = 0;
 		}
@@ -815,11 +815,11 @@ skip:
 				{
 					for(int k = 0; k < 4; ++k)
 					{
-						out << board.at(i + j + k) << " ";
+						cout << board.at(i + j + k) << " ";
 					}
-					out << "      ";
+					cout << "      ";
 				}
-				out << "\n";
+				cout << "\n";
 			}
 		}
 		void draw()
@@ -845,17 +845,17 @@ using namespace std;
 
 void print_round_header(int round)
 {
-	out << "[--------------------ROUND " << round << "--------------------]\n";
+	cout << "[--------------------ROUND " << round << "--------------------]\n";
 }
 
 void print_game_header(int game, int game_tot)
 {
-	out << "[--------------------GAME " << game << "/" << game_tot << "--------------------]\n";
+	cout << "[--------------------GAME " << game << "/" << game_tot << "--------------------]\n";
 }
 
-int main()
+void sim(int AI_1_Type, int AI_2_Type, int n) //The types are the game modes, n is half the total number of games
 {
-	int game_tot = 20;
+	int game_tot = 2*n;
 	int game = 1;
 	ull filled = 1;
 	for(int i = 0; i < 63; ++i)
@@ -865,12 +865,12 @@ int main()
 	}
 	int s_wins = 0;
 	int d_wins = 0;
-	for(int i = 0; i < 10; ++i)
+	for(int i = 0; i < n; ++i)
 	{
 		print_game_header(game++, game_tot);
 		int round = 0;
-		MZ::MZ AI_1(minutes(3), 1);
-		MZ::MZ AI_2(minutes(3), 4);
+		MZ::MZ AI_1(minutes(3), AI_1_Type);
+		MZ::MZ AI_2(minutes(3), AI_2_Type);
 		ull P1 = 0;
 		ull P2 = 0;
 		int mv[3] = {-1, -1, -1};
@@ -880,14 +880,14 @@ int main()
 		while(!MZ::MZ::won(P1) && !MZ::MZ::won(P2) && !((P1 | P2) == filled))
 		{
 			print_round_header(round++);
-			out << "Static moving...\n";
+			cout << "Static moving...\n";
 			AI_1.next_move(mv);
 			ull move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
 			P1 |= move;
 			MZ::MZ::draw(P1, P2);
 			if(!MZ::MZ::won(P1) && !MZ::MZ::won(P2) && !((P1 | P2) == filled))
 			{
-				out << "Dynamic moving...\n";
+				cout << "Dynamic moving...\n";
 				AI_2.next_move(mv);
 				move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
 				P2 |= move;
@@ -897,18 +897,18 @@ int main()
 		
 		if(MZ::MZ::won(P1))
 		{
-			out << "Static won!\n\n\n\n";
+			cout << "Static won!\n\n\n\n";
 			++s_wins;
 		}
 		else if(MZ::MZ::won(P2))
 		{
-			out << "Dynamic won!\n\n\n\n";
+			cout << "Dynamic won!\n\n\n\n";
 			++d_wins;
 		}
-		else out << "DRAW!\n\n\n\n";
+		else cout << "DRAW!\n\n\n\n";
 		cout << "DONE " << game - 1 << "\n";
 	}
-	for(int i = 0; i < 10; ++i)
+	for(int i = 0; i < n; ++i)
 	{
 		print_game_header(game++, game_tot);
 		int round = 0;
@@ -923,14 +923,14 @@ int main()
 		while(!MZ::MZ::won(P1) && !MZ::MZ::won(P2) && !((P1 | P2) == filled))
 		{
 			print_round_header(round++);
-			out << "Dynamic moving...\n";
+			cout << "Dynamic moving...\n";
 			AI_1.next_move(mv);
 			ull move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
 			P1 |= move;
 			MZ::MZ::draw(P1, P2);
 			if(!MZ::MZ::won(P1) && !MZ::MZ::won(P2) && !((P1 | P2) == filled))
 			{
-				out << "Static moving...\n";
+				cout << "Static moving...\n";
 				AI_2.next_move(mv);
 				move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
 				P2 |= move;
@@ -940,19 +940,24 @@ int main()
 		
 		if(MZ::MZ::won(P1))
 		{
-			out << "Dynamic won!\n\n\n\n";
+			cout << "Dynamic won!\n\n\n\n";
 			++d_wins;
 		}
 		else if(MZ::MZ::won(P2))
 		{
-			out << "Static won!\n\n\n\n";
+			cout << "Static won!\n\n\n\n";
 			++s_wins;
 		}
-		else out << "DRAW!\n\n\n\n";
-		cout << "DONE " << game - 1 << "\n";
+		else cout << "DRAW!\n\n\n\n";
+		//cout << "DONE " << game - 1 << "\n";
 	}
-	out << "Static: " << s_wins << "\n";	
-	out << "Dynamic: " << d_wins << "\n";	
+	cout << "Static: " << s_wins << "\n";	
+	cout << "Dynamic: " << d_wins << "\n";	
+}
+
+int main()
+{
+	sim(1, 4, 5);
 	return 0;
 }
 
