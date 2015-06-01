@@ -747,11 +747,7 @@ skip:
 
 }
 
-<<<<<<< HEAD
 constexpr unsigned long long MZ::MZ::wins[MZ::MZ::WINS];
-=======
-constexpr unsigned long long MZ::MZ::wins[76];
->>>>>>> 71a8698a3c98a2155228d990fcb341cc1e644411
 
 void translate(int move, int mv[])
 {
@@ -765,12 +761,9 @@ int main()
 	MZ::MZ board(minutes(3));
 	int mv[3];
 	board.draw();
-<<<<<<< HEAD
-	//{//Couldn't compile with this random open bracket. I have a feeling it's meant to be part of a loop, but I commented it out just in case it reminds you of something you need here
-=======
+
 	while(!board.won())
 	{
->>>>>>> 71a8698a3c98a2155228d990fcb341cc1e644411
 		int move;
 		std::cin >> move;
 		translate(move, mv);

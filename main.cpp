@@ -1,5 +1,5 @@
 #include "ttt3d.h"
-#include "MarkZach.h"
+#include "AI_Test.cpp"
 #include <iostream>
 #include <cstring>
 #include <cstdlib>
@@ -142,6 +142,10 @@ int main() {
     //AI_TYPE1 *ai1;
     //AI_TYPE2 *ai2;
     //sim(ai1, ai2, length);
+    
+    MZ::MZ *test1 = new MZ::MZ(length);
+    MZ::MZ *test2 = new MZ::MZ(length);
+    sim(test1, test2, length);
 
     return 0;
 }

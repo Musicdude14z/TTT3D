@@ -756,6 +756,7 @@ void translate(int move, int mv[])
 	mv[0] = move%4;
 }
 
+/* Commented for now so that main in main.cpp can compile
 int main()
 {
 	MZ::MZ board(minutes(3));
@@ -780,4 +781,4 @@ int main()
 	else if(board.won() == 2) std::cout << "You won!\n";
 	return 0; //NEW IDEA: FOR Minimax, if there are multiple states with same score, randomly choose from them
 }
-
+*/
