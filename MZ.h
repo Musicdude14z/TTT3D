@@ -3,14 +3,8 @@
 #include <limits>
 #include <cstdlib>
 #include <cstring>
-#include <algorithm>
-#include <fstream>
 
 #include "ttt3d.h"
-
-using namespace std;
-
-ofstream out("game_log_3.txt");
 
 //our namespace
 namespace MZ {
@@ -275,7 +269,6 @@ class MZ : public TTT3D {
 		{
 			return !(A & B);
 		}
-		public: //CHANGE BACK TO PRIVATE
 		static bool won(ull P)
 		{
 			for(const ull *i = wins; i < winEnd; ++i)
@@ -284,7 +277,6 @@ class MZ : public TTT3D {
 			}
 			return false;
 		}
-		private:
 		static bool won(ull P, ull w)
 		{
 			return (P & w) == w;
@@ -324,7 +316,7 @@ class MZ : public TTT3D {
 			int E_potential = 76*76*76*E_wins + 76*76*E_ataris + 2*E_twos;
 			return P_potential - E_potential;
 		}
-		static void prune(ABNode *root, int i) //Cuts off all other trees after i
+		static void prune(ABNode *root, int i) //Cuts off all other trees after i //Unfortunately it doesn't work.
 		{
 			/*if(root->children.size() > i + 1)
 			{
@@ -461,46 +453,8 @@ class MZ : public TTT3D {
 						}
 					}
 					if(beta <= alpha) prune(root, i);
-					//cout << root->children.size() + 1 << " " << i + 1 << "\n";
 				}
 				return;
-			}
-		}
-		static void minimax(ABNode *root)
-		{
-			if(root->children.empty())
-			{
-				root->score = eval(root->P, root->E);
-			}
-			else
-			{
-				if(root->type == ABType::MAX)
-				{
-					for(int i = 0; i < root->children.size(); ++i)
-					{
-						minimax(root->children[i]);
-						cout << "MAX\n";
-						if(root->children[i]->score > root->score)
-						{
-							root->score = root->children[i]->score;
-							root->P_next = root->children[i]->P;
-							root->E_next = root->children[i]->E;
-						}
-					}
-				}
-				if(root->type == ABType::MIN)
-				{
-					for(int i = 0; i < root->children.size(); ++i)
-					{
-						minimax(root->children[i]);
-						if(root->children[i]->score < root->score)
-						{
-							root->score = root->children[i]->score;
-							root->P_next = root->children[i]->P;
-							root->E_next = root->children[i]->E;
-						}
-					}
-				}
 			}
 		}
 		static void gen_tree(ABNode *root, int depth, ABType p = ABType::MAX) //Optimize this to get rid of symmetric cases
@@ -543,40 +497,6 @@ class MZ : public TTT3D {
 			AB2(root, depth, numeric_limits<int>::min(), numeric_limits<int>::max());
 		}
 
-		/*
-			Below I've added a couple of utility functions that you may find useful, some of which I'll use for my static evaluation idea.
-		*/
-		//These functions work with properties of the ull's themselves:
-		static ull ull_rand(int n, ull mask = 0) //Returns random ull u with n of its bits equal to 1 and such that u & mask == 0
-		{
-			ull u = 0;
-			vector<int> indices;
-			indices.reserve(64);
-			int pwr_counter = 0;
-			while(pwr_counter < 64)
-			{
-				if(!(mask & 1)) indices.push_back(pwr_counter);
-				++pwr_counter;
-				mask >>= 1;
-			}
-			int counter = 0;
-			while(counter < n && !indices.empty())
-			{
-				int chosen = rand() % indices.size();
-				u += (1ULL << indices[chosen]);
-				indices.erase(indices.begin() + chosen);
-				++counter;
-			}
-			return u;
-		}
-		
-		static ull ull_rand_v(int n, ull mask = 0) //Runs the above function until it returns a valid position (i.e. not won)
-		{
-			ull P = ull_rand(n, mask);
-			while(won(P)) P = ull_rand(n, mask);
-			return P;	
-		}
-		
 		static int ull_sum(ull u) //Returns digital sum of ull in binary
 		{
 			int counter = 0;
@@ -586,24 +506,6 @@ class MZ : public TTT3D {
 				u >>= 1;
 			}
 			return counter;
-		}
-		
-		static ull ull_comp(ull P) //returns a complement ull E for a given P such that (P, E) is a valid state
-		{
-			int P_sum = ull_sum(P);
-			ull E = ull_rand(P_sum, P);
-			int diff = ull_sum(P) - ull_sum(E);
-			if(diff != 0 && diff != -1 && diff != 1) return 0;
-			return E;
-		}
-		
-		static ull ull_comp_v(ull P) //does the above function's job but checks for E's validity
-		{
-			int P_sum = ull_sum(P);
-			ull E = ull_rand_v(P_sum, P);
-			int diff = ull_sum(P) - ull_sum(E);
-			if(diff != 0 && diff != -1 && diff != 1) return 0;
-			return E;
 		}
 		
 		//And these functions calculate things about game states:
@@ -794,188 +696,9 @@ skip:
 			return scores[0].loss;
 		}
 
-
-	public: //probably should move up to the public section up top, but alright :P
-		static void draw(ull P, ull E) //You can call this function to write a board state to stdout
-		{
-			vector<char> board;
-			board.reserve(64);
-			while(board.size() < 64)
-			{
-				if((P & 1) && (E & 1)) board.push_back('*');
-				else if(P & 1) board.push_back('X');
-				else if(E & 1) board.push_back('O');
-				else board.push_back('_');
-				P >>= 1;
-				E >>= 1;
-			}
-			for(int i = 0; i < 16; i += 4) //Just prints it in the right order
-			{
-				for(int j = 0; j < 64; j += 16)
-				{
-					for(int k = 0; k < 4; ++k)
-					{
-						out << board.at(i + j + k) << " ";
-						cout << board.at(i + j + k) << " ";
-					}
-					out << "      ";
-					cout << "      ";
-				}
-				out << "\n";
-				cout << "\n";
-			}
-		}
-		void draw()
-		{
-			draw(P, E);
-		}
 };
 
 }
 
 constexpr unsigned long long MZ::MZ::wins[MZ::MZ::WINS];
-
-void translate(int move, int mv[])
-{
-	mv[2] = move/16;
-	mv[1] = (move-16*mv[2])/4;
-	mv[0] = move%4;
-}
-
-typedef unsigned long long ull;
-
-using namespace std;
-
-void print_round_header(int round)
-{
-	out << "[--------------------ROUND " << round << "--------------------]\n";
-	cout << "[--------------------ROUND " << round << "--------------------]\n";
-}
-
-void print_game_header(int game, int game_tot)
-{
-	out << "[--------------------GAME " << game << "/" << game_tot << "--------------------]\n";
-	cout << "[--------------------GAME " << game << "/" << game_tot << "--------------------]\n";
-}
-
-void sim(int AI_1_Type, int AI_2_Type, int n) //The types are the game modes, n is half the total number of games
-{
-	int game_tot = 2*n;
-	int game = 1;
-	ull filled = 1;
-	for(int i = 0; i < 63; ++i)
-	{
-		filled <<= 1;
-		filled |= 1ULL;
-	}
-	int s_wins_1 = 0;
-	int s_wins_2 = 0;
-	int d_wins_1 = 0;
-	int d_wins_2 = 0;
-	for(int i = 0; i < n; ++i)
-	{
-		print_game_header(game++, game_tot);
-		int round = 0;
-		MZ::MZ AI_1(minutes(3), AI_1_Type);
-		MZ::MZ AI_2(minutes(3), AI_2_Type);
-		ull P1 = 0;
-		ull P2 = 0;
-		int mv[3] = {-1, -1, -1};
-		print_round_header(round++);
-		MZ::MZ::draw(P1, P2);
-		
-		while(!MZ::MZ::won(P1) && !MZ::MZ::won(P2) && !((P1 | P2) == filled))
-		{
-			print_round_header(round++);
-			out << "Static moving...\n"; cout << "Static moving...\n";
-			AI_1.next_move(mv);
-			ull move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
-			P1 |= move;
-			MZ::MZ::draw(P1, P2);
-			if(!MZ::MZ::won(P1) && !MZ::MZ::won(P2) && !((P1 | P2) == filled))
-			{
-				out << "Dynamic moving...\n"; cout << "Dynamic moving...\n";
-				AI_2.next_move(mv);
-				move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
-				P2 |= move;
-				MZ::MZ::draw(P1, P2);
-			}
-		}
-		
-		if(MZ::MZ::won(P1))
-		{
-			out << "Static won!\n\n\n\n"; cout << "Static won!\n\n\n\n";
-			++s_wins_1;
-		}
-		else if(MZ::MZ::won(P2))
-		{
-			out << "Dynamic won!\n\n\n\n"; cout << "Dynamic won!\n\n\n\n";
-			++d_wins_2;
-		}
-		else 
-		{
-			out << "DRAW!\n\n\n\n";
-			cout << "DRAW!\n\n\n\n";
-		}
-		//cout << "DONE " << game - 1 << "\n";
-	}
-	for(int i = 0; i < n; ++i)
-	{
-		print_game_header(game++, game_tot);
-		int round = 0;
-		MZ::MZ AI_1(minutes(3), 4);
-		MZ::MZ AI_2(minutes(3), 1);
-		ull P1 = 0;
-		ull P2 = 0;
-		int mv[3] = {-1, -1, -1};
-		print_round_header(round++);
-		MZ::MZ::draw(P1, P2);
-		
-		while(!MZ::MZ::won(P1) && !MZ::MZ::won(P2) && !((P1 | P2) == filled))
-		{
-			print_round_header(round++);
-			out << "Dynamic moving...\n"; cout << "Dynamic moving...\n";
-			AI_1.next_move(mv);
-			ull move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
-			P1 |= move;
-			MZ::MZ::draw(P1, P2);
-			if(!MZ::MZ::won(P1) && !MZ::MZ::won(P2) && !((P1 | P2) == filled))
-			{
-				out << "Static moving...\n"; cout << "Static moving...\n";
-				AI_2.next_move(mv);
-				move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
-				P2 |= move;
-				MZ::MZ::draw(P1, P2);
-			}
-		}
-		
-		if(MZ::MZ::won(P1))
-		{
-			out << "Dynamic won!\n\n\n\n"; cout << "Dynamic won!\n\n\n\n";
-			++d_wins_1;
-		}
-		else if(MZ::MZ::won(P2))
-		{
-			out << "Static won!\n\n\n\n"; cout << "Static won!\n\n\n\n";
-			++s_wins_2;
-		}
-		else 
-		{
-			out << "DRAW!\n\n\n\n"; cout << "DRAW!\n\n\n\n";
-		}
-		//cout << "DONE " << game - 1 << "\n";
-	}
-	out << "When static went first...\n"; cout << "When static went first...\n";
-	out << "Static: " << s_wins_1 << "\n"; cout << "Static: " << s_wins_1 << "\n";
-	out << "Dynamic: " << d_wins_2 << "\n\n\n";	cout << "Dynamic: " << d_wins_2 << "\n\n\n";	
-	out << "When dynamic went first...\n"; cout << "When dynamic went first...\n";
-	out << "Dynamic: " << d_wins_1 << "\n";	cout << "Dynamic: " << d_wins_1 << "\n";
-	out << "Static: " << s_wins_2 << "\n\n\n"; cout << "Static: " << s_wins_2 << "\n\n\n";	
-}
-
-int main()
-{
-	sim(1, 4, 10);
-	return 0;
-}
 
