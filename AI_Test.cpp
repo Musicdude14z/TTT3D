@@ -10,7 +10,7 @@
 
 using namespace std;
 
-ofstream out("game_log.txt");
+ofstream out("game_log_2.txt");
 
 //our namespace
 namespace MZ {
@@ -815,10 +815,13 @@ skip:
 				{
 					for(int k = 0; k < 4; ++k)
 					{
+						out << board.at(i + j + k) << " ";
 						cout << board.at(i + j + k) << " ";
 					}
+					out << "      ";
 					cout << "      ";
 				}
+				out << "\n";
 				cout << "\n";
 			}
 		}
@@ -845,11 +848,13 @@ using namespace std;
 
 void print_round_header(int round)
 {
+	out << "[--------------------ROUND " << round << "--------------------]\n";
 	cout << "[--------------------ROUND " << round << "--------------------]\n";
 }
 
 void print_game_header(int game, int game_tot)
 {
+	out << "[--------------------GAME " << game << "/" << game_tot << "--------------------]\n";
 	cout << "[--------------------GAME " << game << "/" << game_tot << "--------------------]\n";
 }
 
@@ -863,8 +868,10 @@ void sim(int AI_1_Type, int AI_2_Type, int n) //The types are the game modes, n 
 		filled <<= 1;
 		filled |= 1ULL;
 	}
-	int s_wins = 0;
-	int d_wins = 0;
+	int s_wins_1 = 0;
+	int s_wins_2 = 0;
+	int d_wins_1 = 0;
+	int d_wins_2 = 0;
 	for(int i = 0; i < n; ++i)
 	{
 		print_game_header(game++, game_tot);
@@ -880,14 +887,14 @@ void sim(int AI_1_Type, int AI_2_Type, int n) //The types are the game modes, n 
 		while(!MZ::MZ::won(P1) && !MZ::MZ::won(P2) && !((P1 | P2) == filled))
 		{
 			print_round_header(round++);
-			cout << "Static moving...\n";
+			out << "Static moving...\n"; cout << "Static moving...\n";
 			AI_1.next_move(mv);
 			ull move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
 			P1 |= move;
 			MZ::MZ::draw(P1, P2);
 			if(!MZ::MZ::won(P1) && !MZ::MZ::won(P2) && !((P1 | P2) == filled))
 			{
-				cout << "Dynamic moving...\n";
+				out << "Dynamic moving...\n"; cout << "Dynamic moving...\n";
 				AI_2.next_move(mv);
 				move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
 				P2 |= move;
@@ -897,16 +904,20 @@ void sim(int AI_1_Type, int AI_2_Type, int n) //The types are the game modes, n 
 		
 		if(MZ::MZ::won(P1))
 		{
-			cout << "Static won!\n\n\n\n";
-			++s_wins;
+			out << "Static won!\n\n\n\n"; cout << "Static won!\n\n\n\n";
+			++s_wins_1;
 		}
 		else if(MZ::MZ::won(P2))
 		{
-			cout << "Dynamic won!\n\n\n\n";
-			++d_wins;
+			out << "Dynamic won!\n\n\n\n"; cout << "Dynamic won!\n\n\n\n";
+			++d_wins_2;
 		}
-		else cout << "DRAW!\n\n\n\n";
-		cout << "DONE " << game - 1 << "\n";
+		else 
+		{
+			out << "DRAW!\n\n\n\n";
+			cout << "DRAW!\n\n\n\n";
+		}
+		//cout << "DONE " << game - 1 << "\n";
 	}
 	for(int i = 0; i < n; ++i)
 	{
@@ -923,14 +934,14 @@ void sim(int AI_1_Type, int AI_2_Type, int n) //The types are the game modes, n 
 		while(!MZ::MZ::won(P1) && !MZ::MZ::won(P2) && !((P1 | P2) == filled))
 		{
 			print_round_header(round++);
-			cout << "Dynamic moving...\n";
+			out << "Dynamic moving...\n"; cout << "Dynamic moving...\n";
 			AI_1.next_move(mv);
 			ull move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
 			P1 |= move;
 			MZ::MZ::draw(P1, P2);
 			if(!MZ::MZ::won(P1) && !MZ::MZ::won(P2) && !((P1 | P2) == filled))
 			{
-				cout << "Static moving...\n";
+				out << "Static moving...\n"; cout << "Static moving...\n";
 				AI_2.next_move(mv);
 				move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
 				P2 |= move;
@@ -940,24 +951,31 @@ void sim(int AI_1_Type, int AI_2_Type, int n) //The types are the game modes, n 
 		
 		if(MZ::MZ::won(P1))
 		{
-			cout << "Dynamic won!\n\n\n\n";
-			++d_wins;
+			out << "Dynamic won!\n\n\n\n"; cout << "Dynamic won!\n\n\n\n";
+			++d_wins_1;
 		}
 		else if(MZ::MZ::won(P2))
 		{
-			cout << "Static won!\n\n\n\n";
-			++s_wins;
+			out << "Static won!\n\n\n\n"; cout << "Static won!\n\n\n\n";
+			++s_wins_2;
 		}
-		else cout << "DRAW!\n\n\n\n";
+		else 
+		{
+			out << "DRAW!\n\n\n\n"; cout << "DRAW!\n\n\n\n";
+		}
 		//cout << "DONE " << game - 1 << "\n";
 	}
-	cout << "Static: " << s_wins << "\n";	
-	cout << "Dynamic: " << d_wins << "\n";	
+	out << "When static went first...\n"; cout << "When static went first...\n";
+	out << "Static: " << s_wins_1 << "\n"; cout << "Static: " << s_wins_1 << "\n";
+	out << "Dynamic: " << d_wins_2 << "\n\n\n";	cout << "Dynamic: " << d_wins_2 << "\n\n\n";	
+	out << "When dynamic went first...\n"; cout << "When dynamic went first...\n";
+	out << "Dynamic: " << d_wins_1 << "\n";	cout << "Dynamic: " << d_wins_1 << "\n";
+	out << "Static: " << s_wins_2 << "\n\n\n"; cout << "Static: " << s_wins_2 << "\n\n\n";	
 }
 
 int main()
 {
-	sim(1, 4, 5);
+	sim(1, 4, 20);
 	return 0;
 }
 
