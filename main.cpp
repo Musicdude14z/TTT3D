@@ -115,7 +115,7 @@ int sim(T *X, K *O, duration<double> length) {
 	
 	print_board(P, E);
 	print_clock(X, O);
-	for(int i = 0; i < 64; ++i) {
+	for(int i = 0; i < 32; ++i) {
 		X->sqzzl(mv);
 		P |= convert(mv);
 		print_board(P, E);
