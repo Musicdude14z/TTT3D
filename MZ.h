@@ -9,6 +9,13 @@
 //our namespace
 namespace MZ {
 
+/*
+	Made by Mark Sabini & Zachary Kaplan
+	Completed on 06/01/15
+	Assignment: TTT3D
+	Class: Data Structures
+*/
+
 using namespace std;
 
 typedef unsigned long long ull;
