@@ -84,18 +84,12 @@ class MZ : public TTT3D {
 	public:
 		ull get_P(){ return P; }
 		ull get_E(){ return E; }
-		MZ(const duration<double> total_time_allowed) : TTT3D(total_time_allowed) {
+		MZ(const duration<double> total_time_allowed, int gamemode = 1) : TTT3D(total_time_allowed), gamemode(gamemode) {
 			history.reserve(64);
-			gamemode = 1;
 			current_line = 0;
 		}
 		void next_move(int mv[3]) { //Takes an int array of size 3, and then changes the array to indicate next move
 		 //If we go first, then we will be passed an illegal move
-		 	if(300 - time_used() < 15)
-		 	{
-		 		gamemode = 2;
-		 		cout << "GOING BERSERK!!!\n";
-			}
 		 	srand(time(NULL));
 			if(mv[0] >= 0 && mv[0] <= 3 && mv[1] >= 0 && mv[1] <= 3 && mv[2] >= 0 && mv[2] <= 3) 
 			{
@@ -111,12 +105,12 @@ class MZ : public TTT3D {
 			if(ull i = atari(P, E))
 			{
 				move = i;
-				cout << "Atari\n";
+				//cout << "Atari\n";
 			}
 			else if(ull i = atari(E, P))
 			{
 				move = i;
-				cout << "Atari2\n";
+				//cout << "Atari2\n";
 			}
 			else if(gamemode == 0) //Controlled line-searching (deterministic in a sense)
 			{
@@ -144,11 +138,11 @@ class MZ : public TTT3D {
 						reverse(free_center_lines.begin(), free_center_lines.end());
 						current_line = free_center_lines.at(0);*/
 						current_line = free_center_lines.at(rand() % free_center_lines.size());
-						cout << "Got one\n";
+						//cout << "Got one\n";
 					}
 					else
 					{
-						cout << "Regular lines\n";
+						//cout << "Regular lines\n";
 						vector<ull> free_lines;
 						for(const ull *i = wins; i < winEnd; ++i)
 						{
@@ -177,19 +171,19 @@ class MZ : public TTT3D {
 				if(!free_spots.empty()) 
 				{
 					move = free_spots.at(rand() % free_spots.size());
-					cout << "have a move\n";
+				//	cout << "have a move\n";
 				}
 			}
 			else if(gamemode == 1) //Alpha-beta pruning based
 			{
 				gamemode1:
-					cout << "\nEntering Alpha-Beta\n";
+					//cout << "\nEntering Alpha-Beta\n";
 				ABNode *root = new ABNode(ABType::MAX, P, E);
 				gen_tree(root, 3);
 				AB(root, 3);
 				ull next = root->P_next;
 				move = root->P_next - root->P;
-				cout << "P_next " << root->P_next << "\n";
+				//cout << "P_next " << root->P_next << "\n";
 			}
 			else if(gamemode == 2) //Absolutely berserk
 			{
@@ -210,10 +204,22 @@ class MZ : public TTT3D {
 					move = free_spots.at(indicator);
 				}
 			}
-			
+			else if(gamemode == 3) //Only dynamic evaluation
+			{
+				eval2(P, E);
+				move = scores[63].pos;
+			}
+			else if(gamemode == 4) //Dynamic evaluation with minimax
+			{
+				ABNode *root = new ABNode(ABType::MAX, P, E);
+				gen_tree(root, 3);
+				AB2(root, 3);
+				ull next = root->P_next;
+				move = root->P_next - root->P;
+			}
 			P = P | move; //Update our record of our state
 			foreign_convert(move, mv); //Store the new move.
-			cout << 16*mv[2] + 4*mv[1] + mv[0] << "\n";
+			//cout << 16*mv[2] + 4*mv[1] + mv[0] << "\n";
 			history.push_back(move); //reserve (max 64 moves)
 		}
 		int won()
@@ -264,6 +270,7 @@ class MZ : public TTT3D {
 		{
 			return !(A & B);
 		}
+		public: //CHANGE BACK TO PRIVATE
 		static bool won(ull P)
 		{
 			for(const ull *i = wins; i < winEnd; ++i)
@@ -272,6 +279,7 @@ class MZ : public TTT3D {
 			}
 			return false;
 		}
+		private:
 		static bool won(ull P, ull w)
 		{
 			return (P & w) == w;
@@ -328,6 +336,72 @@ class MZ : public TTT3D {
 			{
 				//cout << "EVAL\n";
 				root->score = eval(root->P, root->E);
+			}
+			switch(root->type) { //added a switch statement instead of two if's (better practice for enums)
+
+			case ABType::MAX:
+				for(int i = 0; i < root->children.size(); ++i)
+				{
+					AB(root->children[i], depth + 1, alpha, beta);
+					int alpha_ = root->children[i]->score;
+					if(alpha_ > alpha)
+					{
+						alpha = alpha_;
+						root->score = alpha;
+						(root->P_next) = root->children[i]->P;
+						(root->E_next) = root->children[i]->E;
+					}
+					else if(alpha_ == alpha)
+					{
+						int r = rand() % 3;
+						if(r == 0)
+						{
+							alpha = alpha_;
+							root->score = alpha;
+							(root->P_next) = root->children[i]->P;
+							(root->E_next) = root->children[i]->E;
+						}
+					}
+					if(beta <= alpha) prune(root, i);
+					//cout << root->children.size() + 1 << " " << i + 1 << "\n";
+				}
+				return;
+			case ABType::MIN:
+				for(int i = 0; i < root->children.size(); ++i)
+				{
+					AB(root->children[i], depth + 1, alpha, beta);
+					int beta_ = root->children[i]->score;
+					if(beta_ < beta)
+					{
+						beta = beta_;
+						root->score = beta;
+						(root->P_next) = root->children[i]->P;
+						(root->E_next) = root->children[i]->E;
+					}
+					else if(beta_ == beta)
+					{
+						int r = rand() % 3;
+						if(r == 0)
+						{
+							beta = beta_;
+							root->score = beta;
+							(root->P_next) = root->children[i]->P;
+							(root->E_next) = root->children[i]->E;
+						}
+					}
+					if(beta <= alpha) prune(root, i);
+					//cout << root->children.size() + 1 << " " << i + 1 << "\n";
+				}
+				return;
+			}
+		}
+		static void AB2(ABNode *root, int depth, int alpha, int beta) //To make this easier, also pass up the game states (so the AI knows which move to take next)
+		{ //(This isn't actually AB since it doesn't prune...oh well...
+			if(root->children.empty()) 
+			{
+				//cout << "EVAL\n";
+				eval2(root->P, root->E);
+				root->score = scores[63].pos;
 			}
 			switch(root->type) { //added a switch statement instead of two if's (better practice for enums)
 
@@ -458,6 +532,10 @@ class MZ : public TTT3D {
 		static void AB(ABNode *root, int depth) //NOTE: This does not return the value, rather the next move (encoded in ull) for the AI to make.
 		{
 			AB(root, depth, numeric_limits<int>::min(), numeric_limits<int>::max());
+		}
+		static void AB2(ABNode *root, int depth) //NOTE: This does not return the value, rather the next move (encoded in ull) for the AI to make.
+		{
+			AB2(root, depth, numeric_limits<int>::min(), numeric_limits<int>::max());
 		}
 
 		/*
@@ -756,29 +834,74 @@ void translate(int move, int mv[])
 	mv[0] = move%4;
 }
 
-/* Commented for now so that main in main.cpp can compile
+typedef unsigned long long ull;
+
+using namespace std;
+
+void print_header(int round)
+{
+	cout << "[---------------ROUND " << round << "---------------]\n";
+}
+
+//Commented for now so that main in main.cpp can compile
 int main()
 {
-	MZ::MZ board(minutes(3));
-	int mv[3];
-	board.draw();
-
-	while(!board.won())
+	int round = 0;
+	MZ::MZ AI_1(minutes(3), 4);
+	MZ::MZ AI_2(minutes(3), 4);
+	ull P1 = 0;
+	ull P2 = 0;
+	int mv[3] = {-1, -1, -1};
+	print_header(round++);
+	MZ::MZ::draw(P1, P2);
+	
+	while(!MZ::MZ::won(P1) && !MZ::MZ::won(P2))
+	{
+		print_header(round++);
+		std::cout << "AI_1 moving...\n";
+		AI_1.next_move(mv);
+		ull move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
+		P1 |= move;
+		MZ::MZ::draw(P1, P2);
+		if(!MZ::MZ::won(P1) && !MZ::MZ::won(P2))
+		{
+			std::cout << "AI_2 moving...\n";
+			AI_2.next_move(mv);
+			move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
+			P2 |= move;
+			MZ::MZ::draw(P1, P2);
+		}
+	}
+	
+	if(MZ::MZ::won(P1))
+	{
+		std::cout << "AI_1 won!\n";
+	}
+	else if(MZ::MZ::won(P2))
+	{
+		std::cout << "AI_2 won!\n";
+	}
+	else std::cout << "DRAW!\n";
+	
+	/*while(!board.won())
 	{
 		int move;
 		std::cin >> move;
 		translate(move, mv);
+		std::cout << "P1 MOVING\n";
+		enemy.next_move(mv);
 		//board.draw(board.get_P(), board.get_E() | (1ULL << move));
 		std::cout << "\n";
 		if(!board.won())
 		{
+			std::cout << "P2 MOVING\n";
 			board.next_move(mv);
 			board.draw();
 			std::cout << "\n";
 		}
 	}
 	if(board.won() == 1) std::cout << "Enemy won!\n";
-	else if(board.won() == 2) std::cout << "You won!\n";
-	return 0; //NEW IDEA: FOR Minimax, if there are multiple states with same score, randomly choose from them
+	else if(board.won() == 2) std::cout << "You won!\n";*/
+	return 0;
 }
-*/
+
