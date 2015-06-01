@@ -4,8 +4,13 @@
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
+#include <fstream>
 
 #include "ttt3d.h"
+
+using namespace std;
+
+ofstream out("game_log.txt");
 
 //our namespace
 namespace MZ {
@@ -810,11 +815,11 @@ skip:
 				{
 					for(int k = 0; k < 4; ++k)
 					{
-						cout << board.at(i + j + k) << " ";
+						out << board.at(i + j + k) << " ";
 					}
-					cout << "      ";
+					out << "      ";
 				}
-				cout << "\n";
+				out << "\n";
 			}
 		}
 		void draw()
@@ -838,70 +843,116 @@ typedef unsigned long long ull;
 
 using namespace std;
 
-void print_header(int round)
+void print_round_header(int round)
 {
-	cout << "[---------------ROUND " << round << "---------------]\n";
+	out << "[--------------------ROUND " << round << "--------------------]\n";
 }
 
-//Commented for now so that main in main.cpp can compile
+void print_game_header(int game, int game_tot)
+{
+	out << "[--------------------GAME " << game << "/" << game_tot << "--------------------]\n";
+}
+
 int main()
 {
-	int round = 0;
-	MZ::MZ AI_1(minutes(3), 4);
-	MZ::MZ AI_2(minutes(3), 4);
-	ull P1 = 0;
-	ull P2 = 0;
-	int mv[3] = {-1, -1, -1};
-	print_header(round++);
-	MZ::MZ::draw(P1, P2);
-	
-	while(!MZ::MZ::won(P1) && !MZ::MZ::won(P2))
+	int game_tot = 20;
+	int game = 1;
+	ull filled = 1;
+	for(int i = 0; i < 63; ++i)
 	{
-		print_header(round++);
-		std::cout << "AI_1 moving...\n";
-		AI_1.next_move(mv);
-		ull move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
-		P1 |= move;
+		filled <<= 1;
+		filled |= 1ULL;
+	}
+	int s_wins = 0;
+	int d_wins = 0;
+	for(int i = 0; i < 10; ++i)
+	{
+		print_game_header(game++, game_tot);
+		int round = 0;
+		MZ::MZ AI_1(minutes(3), 1);
+		MZ::MZ AI_2(minutes(3), 4);
+		ull P1 = 0;
+		ull P2 = 0;
+		int mv[3] = {-1, -1, -1};
+		print_round_header(round++);
 		MZ::MZ::draw(P1, P2);
-		if(!MZ::MZ::won(P1) && !MZ::MZ::won(P2))
+		
+		while(!MZ::MZ::won(P1) && !MZ::MZ::won(P2) && !((P1 | P2) == filled))
 		{
-			std::cout << "AI_2 moving...\n";
-			AI_2.next_move(mv);
-			move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
-			P2 |= move;
+			print_round_header(round++);
+			out << "Static moving...\n";
+			AI_1.next_move(mv);
+			ull move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
+			P1 |= move;
 			MZ::MZ::draw(P1, P2);
+			if(!MZ::MZ::won(P1) && !MZ::MZ::won(P2) && !((P1 | P2) == filled))
+			{
+				out << "Dynamic moving...\n";
+				AI_2.next_move(mv);
+				move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
+				P2 |= move;
+				MZ::MZ::draw(P1, P2);
+			}
 		}
-	}
-	
-	if(MZ::MZ::won(P1))
-	{
-		std::cout << "AI_1 won!\n";
-	}
-	else if(MZ::MZ::won(P2))
-	{
-		std::cout << "AI_2 won!\n";
-	}
-	else std::cout << "DRAW!\n";
-	
-	/*while(!board.won())
-	{
-		int move;
-		std::cin >> move;
-		translate(move, mv);
-		std::cout << "P1 MOVING\n";
-		enemy.next_move(mv);
-		//board.draw(board.get_P(), board.get_E() | (1ULL << move));
-		std::cout << "\n";
-		if(!board.won())
+		
+		if(MZ::MZ::won(P1))
 		{
-			std::cout << "P2 MOVING\n";
-			board.next_move(mv);
-			board.draw();
-			std::cout << "\n";
+			out << "Static won!\n\n\n\n";
+			++s_wins;
 		}
+		else if(MZ::MZ::won(P2))
+		{
+			out << "Dynamic won!\n\n\n\n";
+			++d_wins;
+		}
+		else out << "DRAW!\n\n\n\n";
+		cout << "DONE " << game - 1 << "\n";
 	}
-	if(board.won() == 1) std::cout << "Enemy won!\n";
-	else if(board.won() == 2) std::cout << "You won!\n";*/
+	for(int i = 0; i < 10; ++i)
+	{
+		print_game_header(game++, game_tot);
+		int round = 0;
+		MZ::MZ AI_1(minutes(3), 4);
+		MZ::MZ AI_2(minutes(3), 1);
+		ull P1 = 0;
+		ull P2 = 0;
+		int mv[3] = {-1, -1, -1};
+		print_round_header(round++);
+		MZ::MZ::draw(P1, P2);
+		
+		while(!MZ::MZ::won(P1) && !MZ::MZ::won(P2) && !((P1 | P2) == filled))
+		{
+			print_round_header(round++);
+			out << "Dynamic moving...\n";
+			AI_1.next_move(mv);
+			ull move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
+			P1 |= move;
+			MZ::MZ::draw(P1, P2);
+			if(!MZ::MZ::won(P1) && !MZ::MZ::won(P2) && !((P1 | P2) == filled))
+			{
+				out << "Static moving...\n";
+				AI_2.next_move(mv);
+				move = (1ULL) << ( (mv[2] << 4) + (mv[1] << 2) + mv[0] );
+				P2 |= move;
+				MZ::MZ::draw(P1, P2);
+			}
+		}
+		
+		if(MZ::MZ::won(P1))
+		{
+			out << "Dynamic won!\n\n\n\n";
+			++d_wins;
+		}
+		else if(MZ::MZ::won(P2))
+		{
+			out << "Static won!\n\n\n\n";
+			++s_wins;
+		}
+		else out << "DRAW!\n\n\n\n";
+		cout << "DONE " << game - 1 << "\n";
+	}
+	out << "Static: " << s_wins << "\n";	
+	out << "Dynamic: " << d_wins << "\n";	
 	return 0;
 }
 
