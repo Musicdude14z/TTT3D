@@ -213,7 +213,7 @@ class MZ : public TTT3D {
 			else if(gamemode == 3) //Only dynamic evaluation
 			{
 				eval2(P, E);
-				move = scores[63].pos;
+				move = (1ULL) << scores[63].pos;
 			}
 			else if(gamemode == 4) //Dynamic evaluation with minimax
 			{
@@ -407,7 +407,7 @@ class MZ : public TTT3D {
 			{
 				//cout << "EVAL\n";
 				eval2(root->P, root->E);
-				root->score = scores[63].pos;
+				root->score = scores[63].score;
 			}
 			switch(root->type) { //added a switch statement instead of two if's (better practice for enums)
 
