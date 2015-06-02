@@ -406,7 +406,7 @@ class MZ : public TTT3D {
 			{
 				//cout << "EVAL\n";
 				eval2(root->P, root->E);
-				root->score = scores[63].score;
+				root->score = scores[63].pos;
 			}
 			switch(root->type) { //added a switch statement instead of two if's (better practice for enums)
 
